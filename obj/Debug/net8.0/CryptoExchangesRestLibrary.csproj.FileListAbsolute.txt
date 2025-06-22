@@ -1,0 +1,11 @@
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/bin/Debug/net8.0/CryptoExchangesRestLibrary.deps.json
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/bin/Debug/net8.0/CryptoExchangesRestLibrary.dll
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/bin/Debug/net8.0/CryptoExchangesRestLibrary.pdb
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.GeneratedMSBuildEditorConfig.editorconfig
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.AssemblyInfoInputs.cache
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.AssemblyInfo.cs
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.csproj.CoreCompileInputs.cache
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.dll
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/refint/CryptoExchangesRestLibrary.dll
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.pdb
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/ref/CryptoExchangesRestLibrary.dll

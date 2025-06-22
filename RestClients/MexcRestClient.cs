@@ -1,0 +1,70 @@
+using System.Globalization;
+using System.Net.Http.Json;
+using CryptoExchangesRestLibrary.RestClients.Abstraction;
+
+namespace CryptoExchangesRestLibrary.RestClients;
+
+public class MexcRestClient : ExchangeRestClient
+{
+    private const string _host = "https://api.mexc.com";
+    public MexcRestClient() 
+        : base()
+    { }
+    public async Task<MexcOrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    {
+        string path = $"/api/v3/depth" +
+                      $"?symbol={(!symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol)}" +
+                      $"&limit={limit}";
+        Uri uri = new Uri($"{_host}{path}");
+        var response = await _client.GetAsync(uri);
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"[BinanceRestClient]: HTTP ошибка при получении ордербука по паре {symbol}");
+        var tempResponse = await response.Content.ReadFromJsonAsync<InnerMexcOrderbookResponse>();
+        if (tempResponse == null)
+            throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
+        return new MexcOrderbookResponse(
+            tempResponse.LastUpdateId,
+            ConvertToDictionary(tempResponse.Bids),
+            ConvertToDictionary(tempResponse.Asks)
+        );
+    }public async Task<List<string>> GetSymbolsAsync()
+    {
+        string path = "/api/v3/defaultSymbols";
+        Uri uri = new Uri($"{_host}{path}");
+    
+        var response = await _client.GetAsync(uri);
+        
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"[MexcRestClient]: HTTP error while fetching trading pairs. Status code: {response.StatusCode}");
+            
+        var apiResponse = await response.Content.ReadFromJsonAsync<MexcSymbolsResponse>();
+        
+        if (apiResponse == null || apiResponse.Data == null)
+            throw new Exception($"[MexcRestClient]: Failed to deserialize trading pairs response");
+            
+        return apiResponse.Data;
+    }
+    private record MexcSymbolsResponse(
+        List<string> Data,
+        int Code,
+        string Msg,
+        long Timestamp
+    );
+    private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
+    {
+        return orders.ToDictionary(
+            x => decimal.Parse(x[0], CultureInfo.InvariantCulture),
+            x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
+        );
+    }
+    private record InnerMexcOrderbookResponse(
+        long LastUpdateId,
+        List<List<string>> Bids,
+        List<List<string>> Asks
+    );
+}
+public record MexcOrderbookResponse(
+    long LastUpdateId,
+    Dictionary<decimal, decimal> Bids, 
+    Dictionary<decimal, decimal> Asks 
+) : OrderbookResponce;
