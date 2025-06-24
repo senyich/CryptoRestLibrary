@@ -10,10 +10,11 @@ public class MexcRestClient : ExchangeRestClient
     public MexcRestClient() 
         : base()
     { }
-    public async Task<MexcOrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
+        symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol;
         string path = $"/api/v3/depth" +
-                      $"?symbol={(!symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol)}" +
+                      $"?symbol={symbol}" +
                       $"&limit={limit}";
         Uri uri = new Uri($"{_host}{path}");
         var response = await _client.GetAsync(uri);
@@ -21,13 +22,14 @@ public class MexcRestClient : ExchangeRestClient
             throw new Exception($"[BinanceRestClient]: HTTP ошибка при получении ордербука по паре {symbol}");
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerMexcOrderbookResponse>();
         if (tempResponse == null)
-            throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
-        return new MexcOrderbookResponse(
-            tempResponse.LastUpdateId,
+            throw new Exception($"[BinanceRestCl6ient]: Не удалось десериализовать ответ для пары {symbol}");
+        return new OrderbookResponce(
+            symbol,
             ConvertToDictionary(tempResponse.Bids),
             ConvertToDictionary(tempResponse.Asks)
         );
-    }public async Task<List<string>> GetSymbolsAsync()
+    }
+    public override async Task<List<string>> GetSymbolsAsync()
     {
         string path = "/api/v3/defaultSymbols";
         Uri uri = new Uri($"{_host}{path}");
@@ -44,12 +46,6 @@ public class MexcRestClient : ExchangeRestClient
             
         return apiResponse.Data;
     }
-    private record MexcSymbolsResponse(
-        List<string> Data,
-        int Code,
-        string Msg,
-        long Timestamp
-    );
     private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
     {
         return orders.ToDictionary(
@@ -57,14 +53,15 @@ public class MexcRestClient : ExchangeRestClient
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
         );
     }
+    private record MexcSymbolsResponse(
+        List<string> Data,
+        int Code,
+        string Msg,
+        long Timestamp
+    );
     private record InnerMexcOrderbookResponse(
         long LastUpdateId,
         List<List<string>> Bids,
         List<List<string>> Asks
     );
 }
-public record MexcOrderbookResponse(
-    long LastUpdateId,
-    Dictionary<decimal, decimal> Bids, 
-    Dictionary<decimal, decimal> Asks 
-) : OrderbookResponce;

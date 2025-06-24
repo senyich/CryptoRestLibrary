@@ -19,10 +19,11 @@ public class BinanceRestClient : ExchangeRestClient
     public BinanceRestClient() 
         : base()
     { }
-    public async Task<BinanceOrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
+        symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol;
         string path = $"/api/v3/depth" +
-                      $"?symbol={(!symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol)}" +
+                      $"?symbol={symbol}" +
                       $"&limit={limit}";
         Uri uri = new Uri($"{_host}{path}");
         var response = await _client.GetAsync(uri);
@@ -31,13 +32,13 @@ public class BinanceRestClient : ExchangeRestClient
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
         if (tempResponse == null)
             throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
-        return new BinanceOrderbookResponse(
-            tempResponse.LastUpdateId,
+        return new OrderbookResponce(
+            symbol,
             ConvertToDictionary(tempResponse.Bids),
             ConvertToDictionary(tempResponse.Asks)
         );
     }
-    public async Task<List<string>> GetSymbolsAsync()
+    public override async Task<List<string>> GetSymbolsAsync()
     {
         string path = "/api/v3/ticker/price";
         Uri uri = new Uri($"{_host}{path}");
@@ -60,8 +61,3 @@ public class BinanceRestClient : ExchangeRestClient
         );
     }
 }
-public record BinanceOrderbookResponse(
-    long LastUpdateId,
-    Dictionary<decimal, decimal> Bids, 
-    Dictionary<decimal, decimal> Asks 
-) : OrderbookResponce;

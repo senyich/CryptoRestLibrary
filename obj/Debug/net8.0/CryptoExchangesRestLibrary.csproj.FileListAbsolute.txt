@@ -9,3 +9,4 @@
 /home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/refint/CryptoExchangesRestLibrary.dll
 /home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.pdb
 /home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/ref/CryptoExchangesRestLibrary.dll
+/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.sourcelink.json

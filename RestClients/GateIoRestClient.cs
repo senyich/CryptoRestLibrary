@@ -10,10 +10,11 @@ public class GateIoRestClient : ExchangeRestClient
     public GateIoRestClient() 
         : base()
     { }
-    public async Task<GateIoOrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
+        symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "_USDT" : symbol.Replace("USDT", "_USDT");
         string path = $"/api/v4/spot/order_book" +
-                      $"?currency_pair={(!symbol.ToUpper().Contains("USDT") ? symbol + "_USDT" : symbol.Replace("USDT","_USDT"))}" +
+                      $"?currency_pair={symbol}" +
                       $"&limit={limit}";
         symbol = symbol.ToLower().Replace("USDT", "_USDT");
         Uri uri = new Uri($"{_host}{path}");
@@ -26,15 +27,13 @@ public class GateIoRestClient : ExchangeRestClient
         if (tempResponse == null)
             throw new Exception($"[GateIoRestClient]: Не удалось десериализовать ответ для пары {symbol}");
             
-        return new GateIoOrderbookResponse(
-            tempResponse.Id,
-            tempResponse.Current,
-            tempResponse.Update,
+        return new OrderbookResponce(
+            symbol,
             ConvertToDictionary(tempResponse.Bids),
             ConvertToDictionary(tempResponse.Asks)
         );
     }
-    public async Task<List<string>> GetSymbolsAsync()
+    public override async Task<List<string>> GetSymbolsAsync()
     {
         string path = "/api/v4/spot/currency_pairs";
         Uri uri = new Uri($"{_host}{path}");
@@ -82,10 +81,3 @@ public class GateIoRestClient : ExchangeRestClient
         List<List<string>> Asks
     );
 }
-public record GateIoOrderbookResponse(
-    long Id,
-    long Current,
-    long Update,
-    Dictionary<decimal, decimal> Bids, 
-    Dictionary<decimal, decimal> Asks 
-) : OrderbookResponce;

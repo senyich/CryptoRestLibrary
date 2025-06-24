@@ -11,6 +11,13 @@ public abstract class ExchangeRestClient
     {
         _client = new HttpClient();        
     }
+
+    public abstract Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10);
+    public abstract Task<List<string>> GetSymbolsAsync();
 }
 
-public abstract record class OrderbookResponce();
+public record class OrderbookResponce(    
+    string Symbol,
+    Dictionary<decimal, decimal> Asks, 
+    Dictionary<decimal, decimal> Bids
+);

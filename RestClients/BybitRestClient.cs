@@ -42,11 +42,12 @@ public class BybitRestClient : ExchangeRestClient
     private const string _host = "https://api.bybit.com";
     public BybitRestClient() : base()
     { }
-    public async Task<BybitOrderbookResponce> GetOrderbookAsync(string symbol, string category = "spot", int limit = 10)
+    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
+        symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol;
         string path = $"/v5/market/orderbook" +
-                      $"?category={category}" +
-                      $"&symbol={(!symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol)}" +
+                      $"?category={"spot"}" +
+                      $"&symbol={symbol}" +
                       $"&limit={limit}";
         Uri uri = new Uri($"{_host}{path}");
         var response = await _client.GetAsync(uri);
@@ -55,14 +56,14 @@ public class BybitRestClient : ExchangeRestClient
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerBybitOrderbookResponse>();
         if (tempResponse == null)
             throw new Exception($"[BybitRestClient]: Не удалось десериализовать ответ для пары {symbol}");
-        return new BybitOrderbookResponce(
-            tempResponse.Result.S,
+        return new OrderbookResponce(
+            symbol,
             ConvertToDictionary(tempResponse.Result.A),
             ConvertToDictionary(tempResponse.Result.B)
         );
     }
 
-    public async Task<List<string>> GetSymbolsAsync()
+    public override async Task<List<string>> GetSymbolsAsync()
     {
         string path = "/v5/market/tickers?category=spot";
         Uri uri = new Uri($"{_host}{path}");
@@ -86,8 +87,3 @@ public class BybitRestClient : ExchangeRestClient
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture) 
         );
 }
-public record BybitOrderbookResponce(
-    string Symbol,
-    Dictionary<decimal, decimal> Asks, 
-    Dictionary<decimal, decimal> Bids  
-) : OrderbookResponce;
