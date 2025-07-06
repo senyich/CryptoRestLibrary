@@ -10,7 +10,6 @@ namespace CryptoExchangesRestLibrary.RestClients;
 public class BingXRestClient : ExchangeRestClient
 {
     private const string _host = "https://open-api.bingx.com";
-
     public BingXRestClient()
         : base()
     { }
@@ -22,8 +21,7 @@ public class BingXRestClient : ExchangeRestClient
         string path = $"/openApi/swap/v2/quote/depth" +
                       $"?symbol={symbol}" +
                       $"&limit={limit}";
-        Uri uri = new Uri($"{_host}{path}");
-        var response = await _client.GetAsync(uri);
+        var response = await _client.GetAsync(new Uri($"{_host}{path}"));
         if (!response.IsSuccessStatusCode)
             throw new Exception($"[BingXExchange]: http ошибка при получении ордербука по паре {symbol}");
         var apiResponse = await response.Content.ReadFromJsonAsync<BingXOrderbookResponse>();
@@ -89,8 +87,7 @@ public class BingXRestClient : ExchangeRestClient
         var response = await _client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadAsStringAsync();
-
-        // Десериализация в промежуточные классы
+        
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<CoinData>>();
         if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
             return null;

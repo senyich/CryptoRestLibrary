@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
 
 namespace CryptoExchangesRestLibrary.RestClients;
@@ -50,7 +52,40 @@ public class GateIoRestClient : ExchangeRestClient
     }
     public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
     {
-        throw new NotImplementedException();
+        if (_apiCredentials == null)
+            throw new Exception("[GateIoRestClient]: Для получения информации для перевода, требуются api ключи");
+        symbol = symbol.ToUpper().Contains("USDT") 
+            ? symbol.Replace("USDT", string.Empty) 
+            : symbol;
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        string query = $"/api/v4/wallet/fee?currency={symbol}"; 
+        string path1 = $"/api/v4/wallet/currency_chains?currency={symbol}";
+        var signature = GenerateSignature(query, timestamp.ToString().Substring(0, 10));
+        var feeRequest = new HttpRequestMessage
+        {
+            Method = HttpMethod.Get,
+            RequestUri = new Uri($"{_host}{query}"),
+            Headers =
+            {
+                { "Timestamp", timestamp.ToString().Substring(0, 10) },
+                { "KEY", _apiCredentials.apiKey },
+                { "SIGN", signature }
+            }
+        };
+        Uri uri1 = new Uri($"{_host}{path1}");
+        var chainsResponce = await _client.GetAsync(uri1);
+        var chainsResult = await chainsResponce.Content.ReadFromJsonAsync<List<GateIoChainsResult>>();
+        
+        var res = await _client.SendAsync(request);
+        Console.WriteLine(res.Content.ReadAsStringAsync().Result);
+        return null;
+    }
+    private string GenerateSignature(string query, string timestamp)
+    {
+        var message = timestamp + "GET" + query;
+        using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.apiSecret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(message));
+        return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
     private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
     {
@@ -59,6 +94,15 @@ public class GateIoRestClient : ExchangeRestClient
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
         );
     }
+    public record GateIoChainsResult(
+        string Chain,
+        string Name_cn,
+        string Name_en,
+        string Contract_adress,
+        int Is_disabled,
+        int Is_deposit_disabled,
+        int Is_wihdraw_disabled
+    );
     private record GateIoSymbolResponse(
         string Id,
         string Base,

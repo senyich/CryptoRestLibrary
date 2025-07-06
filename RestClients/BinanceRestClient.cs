@@ -21,12 +21,13 @@ public class BinanceRestClient : ExchangeRestClient
     { }
     public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
-        symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol;
+        symbol = !symbol.ToUpper().Contains("USDT") 
+            ? symbol + "USDT" 
+            : symbol;
         string path = $"/api/v3/depth" +
                       $"?symbol={symbol}" +
                       $"&limit={limit}";
-        Uri uri = new Uri($"{_host}{path}");
-        var response = await _client.GetAsync(uri);
+        var response = await _client.GetAsync(new Uri($"{_host}{path}"));
         if (!response.IsSuccessStatusCode)
             throw new Exception($"[BinanceRestClient]: HTTP ошибка при получении ордербука по паре {symbol}");
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
@@ -41,8 +42,7 @@ public class BinanceRestClient : ExchangeRestClient
     public override async Task<List<string>> GetSymbolsAsync()
     {
         string path = "/api/v3/ticker/price";
-        Uri uri = new Uri($"{_host}{path}");
-        var response = await _client.GetAsync(uri);
+        var response = await _client.GetAsync(new Uri($"{_host}{path}"));
         if (!response.IsSuccessStatusCode)
             throw new Exception($"[BinanceRestClient]: HTTP ошибка при получении всех торговых пар");
         var tempResponse = await response.Content.ReadFromJsonAsync<List<InnerBinanceSymbolsResponce>>();
