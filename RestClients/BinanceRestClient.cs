@@ -53,6 +53,12 @@ public class BinanceRestClient : ExchangeRestClient
             .Where(t=>t.Contains("USDT"))
             .ToList();
     }
+
+    public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
+    {
+        throw new NotImplementedException();
+    }
+
     private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
     {
         return orders.ToDictionary(
