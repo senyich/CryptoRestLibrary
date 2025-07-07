@@ -10,6 +10,9 @@ public class MexcRestClient : ExchangeRestClient
     public MexcRestClient() 
         : base()
     { }
+
+    public override string GetUrl(string symbol)
+        => $"https://www.mexc.com/ru-RU/exchange/{symbol.Replace("USDT", "_USDT")}";
     public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol;

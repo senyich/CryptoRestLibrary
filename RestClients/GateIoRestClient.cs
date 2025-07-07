@@ -3,15 +3,19 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
+using CryptoExchangesRestLibrary.SerializationClasses.GateIo;
 
 namespace CryptoExchangesRestLibrary.RestClients;
 
 public class GateIoRestClient : ExchangeRestClient
 {
     private const string _host = "https://api.gateio.ws";
+    private const string _payloadSha512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
     public GateIoRestClient() 
         : base()
     { }
+    public override string GetUrl(string symbol)
+        => $"https://www.gate.com/ru/trade/{symbol.Replace("USDT","_USDT")}";
     public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "_USDT" : symbol.Replace("USDT", "_USDT");
@@ -54,37 +58,46 @@ public class GateIoRestClient : ExchangeRestClient
     {
         if (_apiCredentials == null)
             throw new Exception("[GateIoRestClient]: Для получения информации для перевода, требуются api ключи");
+
         symbol = symbol.ToUpper().Contains("USDT") 
             ? symbol.Replace("USDT", string.Empty) 
             : symbol;
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        string query = $"/api/v4/wallet/fee?currency={symbol}"; 
-        string path1 = $"/api/v4/wallet/currency_chains?currency={symbol}";
-        var signature = GenerateSignature(query, timestamp.ToString().Substring(0, 10));
-        var feeRequest = new HttpRequestMessage
-        {
-            Method = HttpMethod.Get,
-            RequestUri = new Uri($"{_host}{query}"),
-            Headers =
-            {
-                { "Timestamp", timestamp.ToString().Substring(0, 10) },
-                { "KEY", _apiCredentials.apiKey },
-                { "SIGN", signature }
-            }
-        };
-        Uri uri1 = new Uri($"{_host}{path1}");
-        var chainsResponce = await _client.GetAsync(uri1);
-        var chainsResult = await chainsResponce.Content.ReadFromJsonAsync<List<GateIoChainsResult>>();
+
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         
-        var res = await _client.SendAsync(request);
-        Console.WriteLine(res.Content.ReadAsStringAsync().Result);
-        return null;
+        string feeEndpoint = "/api/v4/wallet/fee";
+        string query = $"currency={symbol}";
+        string chainsEndpoint = $"/api/v4/wallet/currency_chains?currency={symbol}";
+        
+        string signature = GenerateSignature("GET", feeEndpoint, query, timestamp);
+        
+        string feeUrl = $"{_host}{feeEndpoint}?{query}";
+        var feeRequest = new HttpRequestMessage(HttpMethod.Get, feeUrl);
+        feeRequest.Headers.Add("Accept", "application/json");
+        feeRequest.Headers.Add("Timestamp", timestamp);
+        feeRequest.Headers.Add("KEY", _apiCredentials.apiKey);
+        feeRequest.Headers.Add("SIGN", signature);
+        
+        var chainsResponse = await _client.GetAsync($"{_host}{chainsEndpoint}");
+        var chainsResult = await chainsResponse.Content.ReadFromJsonAsync<List<GateIoChainsResult>>();
+        
+        var feeResponse = await _client.SendAsync(feeRequest);
+        var feeResult = await feeResponse.Content.ReadFromJsonAsync<GateIoFeeInfo>();
+        var result = chainsResult.Select(c => new BlockchainDataResponce(
+            Name: c.Chain,
+            FullName: c.Name_en,
+            CanDeposit: c.Is_deposit_disabled == 1 ? false : true,
+            CanWithdraw: c.Is_wihdraw_disabled == 1 ? false : true,
+            Fee: Math.Abs(decimal.Parse(feeResult.DeliveryMakerFee, CultureInfo.InvariantCulture))))
+            .ToList();
+        return new WithdrawalDataResponce(symbol, result);
     }
-    private string GenerateSignature(string query, string timestamp)
+    private string GenerateSignature(string method, string url, string queryParam, string timestamp)
     {
-        var message = timestamp + "GET" + query;
+        string payload = $"{method}\n{url}\n{queryParam}\n{_payloadSha512}\n{timestamp}";
+        
         using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.apiSecret));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(message));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
     private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
@@ -94,38 +107,4 @@ public class GateIoRestClient : ExchangeRestClient
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
         );
     }
-    public record GateIoChainsResult(
-        string Chain,
-        string Name_cn,
-        string Name_en,
-        string Contract_adress,
-        int Is_disabled,
-        int Is_deposit_disabled,
-        int Is_wihdraw_disabled
-    );
-    private record GateIoSymbolResponse(
-        string Id,
-        string Base,
-        string BaseName,
-        string Quote,
-        string QuoteName,
-        string Fee,
-        string MinBaseAmount,
-        string MinQuoteAmount,
-        string MaxQuoteAmount,
-        int AmountPrecision,
-        int Precision,
-        string Trade_Status,
-        long SellStart,
-        long BuyStart,
-        string Type,
-        string TradeUrl
-    );
-    private record InnerGateIoOrderbookResponse(
-        long Id,
-        long Current,
-        long Update,
-        List<List<string>> Bids,
-        List<List<string>> Asks
-    );
 }

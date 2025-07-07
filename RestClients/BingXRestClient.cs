@@ -13,6 +13,8 @@ public class BingXRestClient : ExchangeRestClient
     public BingXRestClient()
         : base()
     { }
+    public override string GetUrl(string symbol)
+        => $"https://bingx.com/en/spot/{symbol}";
     public async override Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = symbol.Contains("USDT") 

@@ -11,6 +11,8 @@ public class BybitRestClient : ExchangeRestClient
     private const string _host = "https://api.bybit.com";
     public BybitRestClient() : base()
     { }
+    public override string GetUrl(string symbol)
+        => $"https://www.bybit.com/en/trade/spot/{symbol.Replace("USDT","/USDT")}";
     public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") 

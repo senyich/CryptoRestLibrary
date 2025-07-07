@@ -15,6 +15,7 @@ public abstract class ExchangeRestClient
     public abstract Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10);
     public abstract Task<List<string>> GetSymbolsAsync();
     public abstract Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol);
+    public abstract string GetUrl(string symbol);
 }
 
 public record class OrderbookResponce(    

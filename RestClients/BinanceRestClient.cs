@@ -19,6 +19,9 @@ public class BinanceRestClient : ExchangeRestClient
     public BinanceRestClient() 
         : base()
     { }
+
+    public override string GetUrl(string symbol)
+        => $"http://binance.com/ru/trade/{symbol.Replace("USDT", "_USDT")}";
     public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") 
