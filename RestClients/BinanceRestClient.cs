@@ -31,8 +31,7 @@ public class BinanceRestClient : ExchangeRestClient
                       $"?symbol={symbol}" +
                       $"&limit={limit}";
         var response = await _client.GetAsync(new Uri($"{_host}{path}"));
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"[BinanceRestClient]: HTTP ошибка при получении ордербука по паре {symbol}");
+        response.EnsureSuccessStatusCode();
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
         if (tempResponse == null)
             throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
@@ -46,8 +45,7 @@ public class BinanceRestClient : ExchangeRestClient
     {
         string path = "/api/v3/ticker/price";
         var response = await _client.GetAsync(new Uri($"{_host}{path}"));
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"[BinanceRestClient]: HTTP ошибка при получении всех торговых пар");
+        response.EnsureSuccessStatusCode();
         var tempResponse = await response.Content.ReadFromJsonAsync<List<InnerBinanceSymbolsResponce>>();
         if (tempResponse == null)
             throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для всех торговых пар");
@@ -61,7 +59,6 @@ public class BinanceRestClient : ExchangeRestClient
     {
         throw new NotImplementedException();
     }
-
     private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
     {
         return orders.ToDictionary(
