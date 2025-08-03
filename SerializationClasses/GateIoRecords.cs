@@ -3,38 +3,38 @@ using System.Text.Json.Serialization;
 namespace CryptoExchangesRestLibrary.SerializationClasses.GateIo;
 
 public record GateIoChainsResult(
-    string Chain,
-    string Name_cn,
-    string Name_en,
-    string Contract_adress,
-    int Is_disabled,
-    int Is_deposit_disabled,
-    int Is_wihdraw_disabled
+    [property: JsonPropertyName("chain")]string Chain,
+    [property: JsonPropertyName("name_cn")]string NameCn,
+    [property: JsonPropertyName("name_en")]string NameEn,
+    [property: JsonPropertyName("contract_adress")]string ContractAdress,
+    [property: JsonPropertyName("is_disabled")]int IsDisabled,
+    [property: JsonPropertyName("is_deposit_disabled")]int IsDepositDisabled,
+    [property: JsonPropertyName("is_withdraw_disabled")]int IsWihdrawDisabled
 );
 public record GateIoSymbolResponse(
-    string Id,
-    string Base,
-    string BaseName,
-    string Quote,
-    string QuoteName,
-    string Fee,
-    string MinBaseAmount,
-    string MinQuoteAmount,
-    string MaxQuoteAmount,
-    int AmountPrecision,
-    int Precision,
-    string Trade_Status,
-    long SellStart,
-    long BuyStart,
-    string Type,
-    string TradeUrl
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("base")]  string Base,
+    [property: JsonPropertyName("baseName")]  string BaseName,
+    [property: JsonPropertyName("quote")]  string Quote,
+    [property: JsonPropertyName("quoteName")]  string QuoteName,
+    [property: JsonPropertyName("fee")] string Fee,
+    [property: JsonPropertyName("minBaseAmount")] string MinBaseAmount,
+    [property: JsonPropertyName("minQuoteAmount")] string MinQuoteAmount,
+    [property: JsonPropertyName("maxQuoteAmount")] string MaxQuoteAmount,
+    [property: JsonPropertyName("amountPrecision")] int AmountPrecision,
+    [property: JsonPropertyName("precisiom")] int Precision,
+    [property: JsonPropertyName("trade_status")] string TradeStatus,
+    [property: JsonPropertyName("sellStart")] long SellStart,
+    [property: JsonPropertyName("buyStart")] long BuyStart,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("tradeUrl")] string TradeUrl
 );
 public record InnerGateIoOrderbookResponse(
-    long Id,
-    long Current,
-    long Update,
-    List<List<string>> Bids,
-    List<List<string>> Asks
+    [property: JsonPropertyName("id")] long Id,
+    [property: JsonPropertyName("current")] long Current,
+    [property: JsonPropertyName("update")] long Update,
+    [property: JsonPropertyName("bids")] List<List<string>> Bids,
+    [property: JsonPropertyName("asks")] List<List<string>> Asks
 );
 public record GateIoFeeInfo(
     [property: JsonPropertyName("user_id")] long UserId,

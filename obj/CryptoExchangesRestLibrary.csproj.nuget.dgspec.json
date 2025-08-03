@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary.csproj": {}
+    "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj": {}
   },
   "projects": {
-    "/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary.csproj": {
+    "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary.csproj",
+        "projectUniqueName": "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj",
         "projectName": "CryptoExchangesRestLibrary",
-        "projectPath": "/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary.csproj",
+        "projectPath": "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj",
         "packagesPath": "/home/senyacm/.nuget/packages/",
-        "outputPath": "/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/obj/",
+        "outputPath": "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/senyacm/.nuget/NuGet/NuGet.Config"

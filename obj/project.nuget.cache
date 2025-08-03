@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "xetqZKvDA5E=",
+  "dgSpecHash": "zEsw3lpMsg4lamA8Bu1+jmw5rDjDM8yZXrXvn8EjNzAyHi7zqiWdZUkLeF3vKHhF9bNoSmRVWcnX9H/ewsC1EQ==",
   "success": true,
-  "projectFilePath": "/home/senyacm/github/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary/CryptoExchangesRestLibrary.csproj",
+  "projectFilePath": "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

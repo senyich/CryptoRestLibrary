@@ -50,7 +50,7 @@ public class GateIoRestClient : ExchangeRestClient
         if (tempResponse == null)
             throw new Exception($"[GateIoRestClient]: Не удалось десериализовать ответ со списком торговых пар");
         return tempResponse
-            .Where(x => x.Trade_Status == "tradable")
+            .Where(x => x.TradeStatus == "tradable")
             .Select(x => x.Id.Replace("_",string.Empty))
             .ToList();
     }
@@ -85,9 +85,9 @@ public class GateIoRestClient : ExchangeRestClient
         var feeResult = await feeResponse.Content.ReadFromJsonAsync<GateIoFeeInfo>();
         var result = chainsResult.Select(c => new BlockchainDataResponce(
             Name: c.Chain,
-            FullName: c.Name_en,
-            CanDeposit: c.Is_deposit_disabled == 1 ? false : true,
-            CanWithdraw: c.Is_wihdraw_disabled == 1 ? false : true,
+            FullName: c.NameEn,
+            CanDeposit: c.IsDepositDisabled == 1 ? false : true,
+            CanWithdraw: c.IsWihdrawDisabled == 1 ? false : true,
             Fee: Math.Abs(decimal.Parse(feeResult.DeliveryMakerFee, CultureInfo.InvariantCulture))))
             .ToList();
         return new WithdrawalDataResponce(symbol, result);
