@@ -47,14 +47,14 @@ public class BingXRestClient : ExchangeRestClient
         var response = await _client.GetAsync(uri);
         
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"[BingXRestClient]: HTTP ошибка при получении списка торговых пар");
+            throw new HttpRequestException($"[BingXRestClient]: ошибка при получении списка торговых пар");
         
         var apiResponse = await response.Content.ReadFromJsonAsync<BingXContractsResponse>();
         
         return apiResponse?.Data?
             .Where(x => x.Status == 1)
             .Select(x => x.Symbol.Replace("-", ""))
-            .ToList() ?? throw new Exception($"[BingXRestClient]: не удалось распарсить ответ");
+            .ToList() ?? throw new ArgumentNullException($"[BingXRestClient]: не удалось распарсить ответ");
     }
     public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
     {

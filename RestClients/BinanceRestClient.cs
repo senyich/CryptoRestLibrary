@@ -1,20 +1,13 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Text.Json;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
+using CryptoExchangesRestLibrary.SerializationClasses;
 
 namespace CryptoExchangesRestLibrary.RestClients;
 
 public class BinanceRestClient : ExchangeRestClient
 {
-    private record InnerBinanceOrderbookResponse(
-        long LastUpdateId,
-        List<List<string>> Bids,
-        List<List<string>> Asks
-    );
-    private record InnerBinanceSymbolsResponce(
-        string Symbol,
-        string Price
-    );
     private const string _host = "https://api.binance.com";
     public BinanceRestClient() 
         : base()
@@ -31,21 +24,23 @@ public class BinanceRestClient : ExchangeRestClient
                       $"?symbol={symbol}" +
                       $"&limit={limit}";
         var response = await _client.GetAsync(new Uri($"{_host}{path}"));
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException("[BinanceRestClient]: Ошибка при полуении ордербука");
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
         if (tempResponse == null)
-            throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
+            throw new JsonException($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
         return new OrderbookResponce(
-            symbol,
-            ConvertToDictionary(tempResponse.Bids),
-            ConvertToDictionary(tempResponse.Asks)
+            Symbol: symbol, 
+            Asks: ConvertToDictionary(tempResponse.Bids),
+            Bids: ConvertToDictionary(tempResponse.Asks)
         );
     }
     public override async Task<List<string>> GetSymbolsAsync()
     {
         string path = "/api/v3/ticker/price";
         var response = await _client.GetAsync(new Uri($"{_host}{path}"));
-        response.EnsureSuccessStatusCode();
+        if(!response.IsSuccessStatusCode)
+            throw new HttpRequestException("[BinanceRestClient]: Ошибка при полуении символов");
         var tempResponse = await response.Content.ReadFromJsonAsync<List<InnerBinanceSymbolsResponce>>();
         if (tempResponse == null)
             throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для всех торговых пар");

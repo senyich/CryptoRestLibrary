@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CryptoExchangesRestLibrary")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d20e9141997e8021d0a843c89d673fc6fef5a923")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+90b824c358a9d79a43c7e7851c4506e53855de90")]
 [assembly: System.Reflection.AssemblyProductAttribute("CryptoExchangesRestLibrary")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CryptoExchangesRestLibrary")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
