@@ -22,3 +22,7 @@
 /home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/refint/CryptoExchangesRestLibrary.dll
 /home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.pdb
 /home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/ref/CryptoExchangesRestLibrary.dll
+/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/bin/Debug/net8.0/Newtonsoft.Json.dll
+/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/bin/Debug/net8.0/Newtonsoft.Json.xml
+/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.csproj.AssemblyReference.cache
+/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.csproj.CopyComplete
