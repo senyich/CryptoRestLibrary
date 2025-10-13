@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "zEsw3lpMsg4lamA8Bu1+jmw5rDjDM8yZXrXvn8EjNzAyHi7zqiWdZUkLeF3vKHhF9bNoSmRVWcnX9H/ewsC1EQ==",
+  "dgSpecHash": "aPkveM3D6P0=",
   "success": true,
-  "projectFilePath": "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "/home/senyacm/GitProjects/ArbitrageLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj",
+  "expectedPackageFiles": [
+    "/home/senyacm/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.20/microsoft.aspnetcore.app.ref.8.0.20.nupkg.sha512"
+  ],
   "logs": []
 }

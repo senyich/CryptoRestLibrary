@@ -17,13 +17,14 @@ public class KucoinRestClient : ExchangeRestClient
     public KucoinRestClient()
         : base()
     { }
-
-    public void SetApiCredentials(string apiKey, string apiSecret)
-        => _apiCredentials = new ApiCredendetails(apiKey, apiSecret);
     public void SetPassPhrase(string passPhrase)
         => _passPhrase = passPhrase;
+    public override string GetUrl(string symbol)
+        => $"https://www.kucoin.com/ru/trade/{symbol.Replace("USDT", "-USDT")}";
+    
     public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 20)
     {
+        limit = limit == 10 ? 20 :~ limit;
         symbol = symbol.Contains("USDT") 
             ? symbol.Replace("USDT", "-USDT") 
             : symbol + "-USDT";
@@ -55,7 +56,7 @@ public class KucoinRestClient : ExchangeRestClient
     }
     public override Task<List<string>> GetSymbolsAsync()
     {
-        throw new NotImplementedException();
+        return Task.FromResult(new List<string>());
     }
     public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
     {
@@ -108,9 +109,5 @@ public class KucoinRestClient : ExchangeRestClient
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(apiSecret));
         byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToBase64String(hash);
-    }
-    public override string GetUrl(string symbol)
-    {
-        throw new NotImplementedException();
     }
 }
