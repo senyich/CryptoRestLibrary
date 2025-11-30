@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
 using CryptoExchangesRestLibrary.SerializationClasses.GateIo;
 
@@ -9,103 +10,153 @@ namespace CryptoExchangesRestLibrary.RestClients;
 
 public class GateIoRestClient : ExchangeRestClient
 {
-    private const string _host = "https://api.gateio.ws";
-    private const string _payloadSha512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
-    public GateIoRestClient() 
-        : base()
-    { }
-    public override string GetUrl(string symbol)
-        => $"https://www.gate.com/ru/trade/{symbol.Replace("USDT","_USDT")}";
+    private const string Host = "https://api.gateio.ws";
+    private const string PayloadSha512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
+
+    public GateIoRestClient() : base() { }
+    public GateIoRestClient(HttpClient client) : base(client) { }
+    public GateIoRestClient(int timeoutSeconds) : base(timeoutSeconds) { }
+
+    public override string GetUrl(string symbol) =>
+        $"https://www.gate.com/ru/trade/{symbol.Replace("USDT", "_USDT")}";
+
     public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
     {
-        symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "_USDT" : symbol.Replace("USDT", "_USDT");
-        string path = $"/api/v4/spot/order_book" +
-                      $"?currency_pair={symbol}" +
-                      $"&limit={limit}";
-        symbol = symbol.ToLower().Replace("USDT", "_USDT");
-        Uri uri = new Uri($"{_host}{path}");
-        var response = await _client.GetAsync(uri);
-        
+        string normalized = NormalizeSymbol(symbol);
+
+        string url = $"{Host}/api/v4/spot/order_book?currency_pair={normalized}&limit={limit}";
+        var response = await _client.GetAsync(url);
+
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"[GateIoRestClient]: HTTP ошибка при получении ордербука по паре {symbol}");
-            
-        var tempResponse = await response.Content.ReadFromJsonAsync<InnerGateIoOrderbookResponse>();
-        if (tempResponse == null)
-            throw new Exception($"[GateIoRestClient]: Не удалось десериализовать ответ для пары {symbol}");
-            
+            throw new HttpRequestException(
+                $"[GateIoRestClient] Failed to fetch orderbook ({response.StatusCode}) for symbol {normalized}");
+
+        var apiResponse = await response.Content.ReadFromJsonAsync<InnerGateIoOrderbookResponse>();
+
+        if (apiResponse == null)
+            throw new JsonException(
+                $"[GateIoRestClient] Failed to deserialize orderbook for {normalized}");
+
         return new OrderbookResponse(
-            symbol,
-            ConvertToDictionary(tempResponse.Bids),
-            ConvertToDictionary(tempResponse.Asks)
+            Symbol: DenormalizeSymbol(normalized),
+            Asks: ConvertToDictionary(apiResponse.Asks),
+            Bids: ConvertToDictionary(apiResponse.Bids)
         );
     }
+
     public override async Task<List<string>> GetSymbolsAsync()
     {
-        string path = "/api/v4/spot/currency_pairs";
-        Uri uri = new Uri($"{_host}{path}");
-        var response = await _client.GetAsync(uri);
+        string url = $"{Host}/api/v4/spot/currency_pairs";
+        var response = await _client.GetAsync(url);
+
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"[GateIoRestClient]: HTTP ошибка при получении списка торговых пар");
-        var tempResponse = await response.Content.ReadFromJsonAsync<List<GateIoSymbolResponse>>();
-        if (tempResponse == null)
-            throw new Exception($"[GateIoRestClient]: Не удалось десериализовать ответ со списком торговых пар");
-        return tempResponse
+            throw new HttpRequestException(
+                $"[GateIoRestClient] Failed to fetch symbols ({response.StatusCode})");
+
+        var apiResponse = await response.Content.ReadFromJsonAsync<List<GateIoSymbolResponse>>();
+
+        if (apiResponse == null)
+            throw new JsonException("[GateIoRestClient] Failed to deserialize symbols list");
+
+        return apiResponse
             .Where(x => x.TradeStatus == "tradable")
-            .Select(x => x.Id.Replace("_",string.Empty))
+            .Select(x => DenormalizeSymbol(x.Id))
             .ToList();
     }
+
     public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
     {
         if (_apiCredentials == null)
-            throw new Exception("[GateIoRestClient]: Для получения информации для перевода, требуются api ключи");
+            throw new InvalidOperationException("[GateIoRestClient] API credentials required for withdrawal data");
 
-        symbol = symbol.ToUpper().Contains("USDT") 
-            ? symbol.Replace("USDT", string.Empty) 
-            : symbol;
+        string normalizedSymbol = NormalizeSymbolForWithdrawal(symbol);
+        string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
 
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-        
         string feeEndpoint = "/api/v4/wallet/fee";
-        string query = $"currency={symbol}";
-        string chainsEndpoint = $"/api/v4/wallet/currency_chains?currency={symbol}";
-        
+        string query = $"currency={normalizedSymbol}";
         string signature = GenerateSignature("GET", feeEndpoint, query, timestamp);
-        
-        string feeUrl = $"{_host}{feeEndpoint}?{query}";
+
+        string feeUrl = $"{Host}{feeEndpoint}?{query}";
         var feeRequest = new HttpRequestMessage(HttpMethod.Get, feeUrl);
         feeRequest.Headers.Add("Accept", "application/json");
         feeRequest.Headers.Add("Timestamp", timestamp);
         feeRequest.Headers.Add("KEY", _apiCredentials.ApiKey);
         feeRequest.Headers.Add("SIGN", signature);
-        
-        var chainsResponse = await _client.GetAsync($"{_host}{chainsEndpoint}");
-        var chainsResult = await chainsResponse.Content.ReadFromJsonAsync<List<GateIoChainsResult>>();
-        
+
+        string chainsEndpoint = $"/api/v4/wallet/currency_chains";
+        string chainsUrl = $"{Host}{chainsEndpoint}?currency={normalizedSymbol}";
+
         var feeResponse = await _client.SendAsync(feeRequest);
+        var chainsResponse = await _client.GetAsync(chainsUrl);
+
+        if (!feeResponse.IsSuccessStatusCode || !chainsResponse.IsSuccessStatusCode)
+            throw new HttpRequestException(
+                $"[GateIoRestClient] Failed to fetch withdrawal data for symbol {symbol}");
+
         var feeResult = await feeResponse.Content.ReadFromJsonAsync<GateIoFeeInfo>();
-        var result = chainsResult.Select(c => new BlockchainDataResponse(
-            Name: c.Chain,
-            FullName: c.NameEn,
-            CanDeposit: c.IsDepositDisabled == 1 ? false : true,
-            CanWithdraw: c.IsWihdrawDisabled == 1 ? false : true,
-            Fee: Math.Abs(decimal.Parse(feeResult.DeliveryMakerFee, CultureInfo.InvariantCulture))))
-            .ToList();
-        return new WithdrawalDataResponse(symbol, result);
-    }
-    private string GenerateSignature(string method, string url, string queryParam, string timestamp)
-    {
-        string payload = $"{method}\n{url}\n{queryParam}\n{_payloadSha512}\n{timestamp}";
-        
-        using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
-        return BitConverter.ToString(hash).Replace("-", "").ToLower();
-    }
-    private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
-    {
-        return orders.ToDictionary(
-            x => decimal.Parse(x[0], CultureInfo.InvariantCulture),
-            x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
+        var chainsResult = await chainsResponse.Content.ReadFromJsonAsync<List<GateIoChainsResult>>();
+
+        if (feeResult == null || chainsResult == null)
+            throw new JsonException(
+                $"[GateIoRestClient] Failed to deserialize withdrawal data for symbol {symbol}");
+
+        decimal fee = Math.Abs(decimal.Parse(feeResult.DeliveryMakerFee, CultureInfo.InvariantCulture));
+
+        var chains = chainsResult.Select(chain => new BlockchainDataResponse(
+            Name: chain.Chain,
+            FullName: chain.NameEn,
+            CanDeposit: chain.IsDepositDisabled != 1,
+            CanWithdraw: chain.IsWihdrawDisabled != 1,
+            Fee: fee
+        )).ToList();
+
+        return new WithdrawalDataResponse(
+            Symbol: normalizedSymbol,
+            Chains: chains
         );
     }
 
+    private static string NormalizeSymbol(string symbol)
+    {
+        symbol = symbol.ToUpperInvariant();
+        return symbol.EndsWith("USDT") ? symbol.Replace("USDT", "_USDT") : $"{symbol}_USDT";
+    }
+
+    private static string DenormalizeSymbol(string symbol)
+    {
+        return symbol.Replace("_", "");
+    }
+
+    private static string NormalizeSymbolForWithdrawal(string symbol)
+    {
+        symbol = symbol.ToUpperInvariant();
+        return symbol.EndsWith("USDT") ? symbol.Replace("USDT", "") : symbol;
+    }
+
+    private string GenerateSignature(string method, string url, string queryString, string timestamp)
+    {
+        string payload = $"{method}\n{url}\n{queryString}\n{PayloadSha512}\n{timestamp}";
+        using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
+        byte[] hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+    }
+
+    private static Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
+    {
+        var dict = new Dictionary<decimal, decimal>(orders.Count);
+
+        foreach (var entry in orders)
+        {
+            if (entry.Count < 2) continue;
+
+            if (!decimal.TryParse(entry[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
+                continue;
+            if (!decimal.TryParse(entry[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var quantity))
+                continue;
+
+            dict[price] = quantity;
+        }
+
+        return dict;
+    }
 }

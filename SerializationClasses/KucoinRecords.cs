@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CryptoExchangesRestLibrary.SerializationClasses;
+namespace CryptoExchangesRestLibrary.SerializationClasses.Kucoin;
 
 public record class KucoinOrderbookData(
     long Time,
