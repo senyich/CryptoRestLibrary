@@ -13,7 +13,7 @@ public class BybitRestClient : ExchangeRestClient
     { }
     public override string GetUrl(string symbol)
         => $"https://www.bybit.com/en/trade/spot/{symbol.Replace("USDT","/USDT")}";
-    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") 
             ? symbol + "USDT" 
@@ -29,7 +29,7 @@ public class BybitRestClient : ExchangeRestClient
         var tempResponse = await response.Content.ReadFromJsonAsync<ApiResponse<BybitOrderbookInnerResult>>();
         if (tempResponse == null)
             throw new Exception($"[BybitRestClient]: Не удалось десериализовать ответ для пары {symbol}");
-        return new OrderbookResponce(
+        return new OrderbookResponse(
             symbol,
             ConvertToDictionary(tempResponse.Result.A),
             ConvertToDictionary(tempResponse.Result.B)
@@ -52,7 +52,7 @@ public class BybitRestClient : ExchangeRestClient
             .Where(x => x.Contains("USDT"))
             .ToList();
     }
-    public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
     {
         if (_apiCredentials == null)
             throw new Exception("[BybitRestClient]: Для получения информации для перевода, требуются api ключи");
@@ -73,7 +73,7 @@ public class BybitRestClient : ExchangeRestClient
             Headers =
             {
                 { "X-BAPI-SIGN", sign },
-                { "X-BAPI-API-KEY", _apiCredentials.apiKey },
+                { "X-BAPI-API-KEY", _apiCredentials.ApiKey },
                 { "X-BAPI-TIMESTAMP", timestamp.ToString() },
                 { "X-BAPI-RECV-WINDOW", recvWindow }
             }
@@ -91,7 +91,7 @@ public class BybitRestClient : ExchangeRestClient
 
         var row = apiResponse.Result.Rows[0];
     
-        var chains = row.Chains.Select(chain => new BlockchainDataResponce(
+        var chains = row.Chains.Select(chain => new BlockchainDataResponse(
             Name: chain.Chain,
             FullName: chain.ChainType,
             CanWithdraw: chain.ChainWithdraw == "1",
@@ -99,15 +99,15 @@ public class BybitRestClient : ExchangeRestClient
             Fee: decimal.Parse(chain.WithdrawFee, CultureInfo.InvariantCulture)
         )).ToList();
         
-        return new WithdrawalDataResponce(
+        return new WithdrawalDataResponse(
             Symbol: row.Coin,
             Chains: chains
         );
     }
     private string GenerateSignature(long timestamp, string recvWindow, string queryString)
     {
-        var payload = $"{timestamp}{_apiCredentials.apiKey}{recvWindow}{queryString}";
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.apiSecret));
+        var payload = $"{timestamp}{_apiCredentials.ApiKey}{recvWindow}{queryString}";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
@@ -116,4 +116,5 @@ public class BybitRestClient : ExchangeRestClient
             x => decimal.Parse(x[0], CultureInfo.InvariantCulture), 
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture) 
         );
+
 }

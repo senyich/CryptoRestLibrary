@@ -4,8 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using CryptoExchangesRestLibrary.Models;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
-using CryptoExchangesRestLibrary.SerializationClasses;
-using Newtonsoft.Json;
+using CryptoExchangesRestLibrary.SerializationClasses.Kucoin;
 using JsonException = System.Text.Json.JsonException;
 
 namespace CryptoExchangesRestLibrary.RestClients;
@@ -18,12 +17,13 @@ public class KucoinRestClient : ExchangeRestClient
         : base()
     { }
 
-    public void SetApiCredentials(string apiKey, string apiSecret)
-        => _apiCredentials = new ApiCredendetails(apiKey, apiSecret);
+    public void SetApiCredentials(string ApiKey, string ApiSecret)
+        => _apiCredentials = new ApiCredendetails(ApiKey, ApiSecret);
     public void SetPassPhrase(string passPhrase)
         => _passPhrase = passPhrase;
-    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 20)
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
     {
+        limit = 20;
         symbol = symbol.Contains("USDT") 
             ? symbol.Replace("USDT", "-USDT") 
             : symbol + "-USDT";
@@ -47,7 +47,7 @@ public class KucoinRestClient : ExchangeRestClient
                 x => decimal.Parse(x[0], CultureInfo.InvariantCulture), 
                 x => decimal.Parse(x[1], CultureInfo.InvariantCulture)
             );
-        return new OrderbookResponce(
+        return new OrderbookResponse(
             Symbol: symbol,
             Asks: asks,
             Bids: bids
@@ -57,7 +57,7 @@ public class KucoinRestClient : ExchangeRestClient
     {
         throw new NotImplementedException();
     }
-    public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
     {
         symbol = symbol.Replace("USDT", "", StringComparison.OrdinalIgnoreCase).ToUpper();
         string path = $"/api/v1/withdrawals/quotas?currency={symbol}";
@@ -68,12 +68,12 @@ public class KucoinRestClient : ExchangeRestClient
         string endpoint = path;
         string strToSign = $"{timestamp}{method}{endpoint}";
 
-        string signature = GenerateSignature(strToSign, _apiCredentials.apiSecret);
+        string signature = GenerateSignature(strToSign, _apiCredentials.ApiSecret);
     
-        string signedPassphrase = GenerateSignature(_passPhrase, _apiCredentials.apiSecret);
+        string signedPassphrase = GenerateSignature(_passPhrase, _apiCredentials.ApiSecret);
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"{_host}{path}");
-        request.Headers.Add("KC-API-KEY", _apiCredentials.apiKey);
+        request.Headers.Add("KC-API-KEY", _apiCredentials.ApiKey);
         request.Headers.Add("KC-API-SIGN", signature);
         request.Headers.Add("KC-API-TIMESTAMP", timestamp.ToString());
         request.Headers.Add("KC-API-PASSPHRASE", signedPassphrase); 
@@ -89,11 +89,11 @@ public class KucoinRestClient : ExchangeRestClient
         var tempResponse = await response.Content.ReadFromJsonAsync<KucoinWithdrawalLimitResponse>();
         if (tempResponse == null)
             throw new JsonException("[KucoinClient]: ошибка десериализации ответа");
-        var withdrawalData = new WithdrawalDataResponce(
+        var withdrawalData = new WithdrawalDataResponse(
             Symbol: tempResponse.Data.Currency,
-            Chains: new List<BlockchainDataResponce>
+            Chains: new List<BlockchainDataResponse>
             {
-                new BlockchainDataResponce(
+                new BlockchainDataResponse(
                     Name: tempResponse.Data.Chain,
                     FullName: tempResponse.Data.Chain, 
                     CanWithdraw: tempResponse.Data.IsWithdrawEnabled,
@@ -103,9 +103,9 @@ public class KucoinRestClient : ExchangeRestClient
         );
         return withdrawalData;
     }
-    private string GenerateSignature(string data, string apiSecret)
+    private string GenerateSignature(string data, string ApiSecret)
     {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(apiSecret));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(ApiSecret));
         byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToBase64String(hash);
     }

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zEsw3lpMsg4lamA8Bu1+jmw5rDjDM8yZXrXvn8EjNzAyHi7zqiWdZUkLeF3vKHhF9bNoSmRVWcnX9H/ewsC1EQ==",
+  "dgSpecHash": "3uDlTBvRUVA=",
   "success": true,
-  "projectFilePath": "/home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/CryptoExchangesRestLibrary.csproj",
+  "projectFilePath": "C:\\Users\\Administrator\\Documents\\GitReposes\\ArrbitrageLibraryV2\\CryptoRestLibrary\\CryptoExchangesRestLibrary.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

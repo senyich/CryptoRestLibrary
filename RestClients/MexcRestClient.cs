@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
+using CryptoExchangesRestLibrary.SerializationClasses.Mexc;
 
 namespace CryptoExchangesRestLibrary.RestClients;
 
@@ -16,7 +17,7 @@ public class MexcRestClient : ExchangeRestClient
 
     public override string GetUrl(string symbol)
         => $"https://www.mexc.com/ru-RU/exchange/{symbol.Replace("USDT", "_USDT")}";
-    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "USDT" : symbol;
         string path = $"/api/v3/depth" +
@@ -29,7 +30,7 @@ public class MexcRestClient : ExchangeRestClient
         var tempResponse = await response.Content.ReadFromJsonAsync<InnerMexcOrderbookResponse>();
         if (tempResponse == null)
             throw new Exception($"[BinanceRestCl6ient]: Не удалось десериализовать ответ для пары {symbol}");
-        return new OrderbookResponce(
+        return new OrderbookResponse(
             symbol,
             ConvertToDictionary(tempResponse.Bids),
             ConvertToDictionary(tempResponse.Asks)
@@ -52,7 +53,7 @@ public class MexcRestClient : ExchangeRestClient
             
         return apiResponse.Data;
     }
-    public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
     {
         if (_apiCredentials == null)
             throw new Exception("[MexcRestClient]: Для получения информации для перевода, требуются api ключи");
@@ -64,7 +65,7 @@ public class MexcRestClient : ExchangeRestClient
         string uri = $"{_host}{path}?{queryString}&signature={sign}";
         
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Add("X-MEXC-APIKEY", _apiCredentials.apiKey);
+        request.Headers.Add("X-MEXC-ApiKey", _apiCredentials.ApiKey);
         request.Headers.Add("Accept", "application/json");
         
         var response = await _client.SendAsync(request);
@@ -75,14 +76,14 @@ public class MexcRestClient : ExchangeRestClient
         var coinConfig = data.FirstOrDefault(c => 
             c.Coin.Equals(symbol, StringComparison.OrdinalIgnoreCase));
         var chains = coinConfig.NetworkList.Select(network => 
-            new BlockchainDataResponce(
+            new BlockchainDataResponse(
                 Name: network.Network,
                 FullName: network.Name,
                 CanWithdraw: network.WithdrawEnable,
                 CanDeposit: network.DepositEnable,
                 Fee: decimal.Parse(network.WithdrawFee, CultureInfo.InvariantCulture)
             )).ToList();
-        return new WithdrawalDataResponce(
+        return new WithdrawalDataResponse(
             Symbol: coinConfig.Coin,
             Chains: chains
         );
@@ -90,7 +91,7 @@ public class MexcRestClient : ExchangeRestClient
 
     private string GenerateSignature(string queryString)
     {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.apiSecret));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(queryString));
         return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
@@ -102,30 +103,7 @@ public class MexcRestClient : ExchangeRestClient
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
         );
     }
-    private record MexcSymbolsResponse(
-        List<string> Data,
-        int Code,
-        string Msg,
-        long Timestamp
-    );
-    private record InnerMexcOrderbookResponse(
-        long LastUpdateId,
-        List<List<string>> Bids,
-        List<List<string>> Asks
-    );
-    private record CoinConfigApiResponse(
-        [property: JsonPropertyName("coin")] string Coin,
-        [property: JsonPropertyName("name")] string Name,
-        [property: JsonPropertyName("networkList")] List<NetworkConfigApiResponse> NetworkList
-    );
-
-    private record NetworkConfigApiResponse(
-        [property: JsonPropertyName("network")] string Network,
-        [property: JsonPropertyName("name")] string Name,
-        [property: JsonPropertyName("withdrawEnable")] bool WithdrawEnable,
-        [property: JsonPropertyName("depositEnable")] bool DepositEnable,
-        [property: JsonPropertyName("withdrawFee")] string WithdrawFee
-    );
+   
 
 
 }

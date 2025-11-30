@@ -16,7 +16,7 @@ public class GateIoRestClient : ExchangeRestClient
     { }
     public override string GetUrl(string symbol)
         => $"https://www.gate.com/ru/trade/{symbol.Replace("USDT","_USDT")}";
-    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
     {
         symbol = !symbol.ToUpper().Contains("USDT") ? symbol + "_USDT" : symbol.Replace("USDT", "_USDT");
         string path = $"/api/v4/spot/order_book" +
@@ -33,7 +33,7 @@ public class GateIoRestClient : ExchangeRestClient
         if (tempResponse == null)
             throw new Exception($"[GateIoRestClient]: Не удалось десериализовать ответ для пары {symbol}");
             
-        return new OrderbookResponce(
+        return new OrderbookResponse(
             symbol,
             ConvertToDictionary(tempResponse.Bids),
             ConvertToDictionary(tempResponse.Asks)
@@ -54,7 +54,7 @@ public class GateIoRestClient : ExchangeRestClient
             .Select(x => x.Id.Replace("_",string.Empty))
             .ToList();
     }
-    public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
     {
         if (_apiCredentials == null)
             throw new Exception("[GateIoRestClient]: Для получения информации для перевода, требуются api ключи");
@@ -75,7 +75,7 @@ public class GateIoRestClient : ExchangeRestClient
         var feeRequest = new HttpRequestMessage(HttpMethod.Get, feeUrl);
         feeRequest.Headers.Add("Accept", "application/json");
         feeRequest.Headers.Add("Timestamp", timestamp);
-        feeRequest.Headers.Add("KEY", _apiCredentials.apiKey);
+        feeRequest.Headers.Add("KEY", _apiCredentials.ApiKey);
         feeRequest.Headers.Add("SIGN", signature);
         
         var chainsResponse = await _client.GetAsync($"{_host}{chainsEndpoint}");
@@ -83,20 +83,20 @@ public class GateIoRestClient : ExchangeRestClient
         
         var feeResponse = await _client.SendAsync(feeRequest);
         var feeResult = await feeResponse.Content.ReadFromJsonAsync<GateIoFeeInfo>();
-        var result = chainsResult.Select(c => new BlockchainDataResponce(
+        var result = chainsResult.Select(c => new BlockchainDataResponse(
             Name: c.Chain,
             FullName: c.NameEn,
             CanDeposit: c.IsDepositDisabled == 1 ? false : true,
             CanWithdraw: c.IsWihdrawDisabled == 1 ? false : true,
             Fee: Math.Abs(decimal.Parse(feeResult.DeliveryMakerFee, CultureInfo.InvariantCulture))))
             .ToList();
-        return new WithdrawalDataResponce(symbol, result);
+        return new WithdrawalDataResponse(symbol, result);
     }
     private string GenerateSignature(string method, string url, string queryParam, string timestamp)
     {
         string payload = $"{method}\n{url}\n{queryParam}\n{_payloadSha512}\n{timestamp}";
         
-        using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.apiSecret));
+        using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
@@ -107,4 +107,5 @@ public class GateIoRestClient : ExchangeRestClient
             x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
         );
     }
+
 }

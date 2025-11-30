@@ -9,56 +9,83 @@ namespace CryptoExchangesRestLibrary.RestClients;
 public class BinanceRestClient : ExchangeRestClient
 {
     private const string _host = "https://api.binance.com";
-    public BinanceRestClient() 
-        : base()
-    { }
 
-    public override string GetUrl(string symbol)
-        => $"http://binance.com/ru/trade/{symbol.Replace("USDT", "_USDT")}";
-    public override async Task<OrderbookResponce> GetOrderbookAsync(string symbol, int limit = 10)
+    public BinanceRestClient() : base() { }
+    public BinanceRestClient(HttpClient client) : base(client) { }
+    public BinanceRestClient(int timeoutSeconds) : base(timeoutSeconds) { }
+
+    public override string GetUrl(string symbol) =>
+        $"https://www.binance.com/ru/trade/{symbol.Replace("USDT", "_USDT")}";
+
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
     {
-        symbol = !symbol.ToUpper().Contains("USDT") 
-            ? symbol + "USDT" 
-            : symbol;
-        string path = $"/api/v3/depth" +
-                      $"?symbol={symbol}" +
-                      $"&limit={limit}";
-        var response = await _client.GetAsync(new Uri($"{_host}{path}"));
+        string normalized = NormalizeSymbol(symbol);
+
+        string url = $"{_host}/api/v3/depth?symbol={normalized}&limit={limit}";
+        var response = await _client.GetAsync(url);
+
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException("[BinanceRestClient]: Ошибка при полуении ордербука");
-        var tempResponse = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
-        if (tempResponse == null)
-            throw new JsonException($"[BinanceRestClient]: Не удалось десериализовать ответ для пары {symbol}");
-        return new OrderbookResponce(
-            Symbol: symbol, 
-            Asks: ConvertToDictionary(tempResponse.Bids),
-            Bids: ConvertToDictionary(tempResponse.Asks)
+            throw new HttpRequestException(
+                $"[BinanceRestClient] Failed to fetch orderbook ({response.StatusCode}) for symbol {normalized}");
+
+        var raw = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
+        if (raw == null)
+            throw new JsonException(
+                $"[BinanceRestClient] Failed to deserialize orderbook for {normalized}");
+
+        return new OrderbookResponse(
+            Symbol: normalized,
+            Asks: ConvertToDictionary(raw.Asks),
+            Bids: ConvertToDictionary(raw.Bids)
         );
     }
     public override async Task<List<string>> GetSymbolsAsync()
     {
-        string path = "/api/v3/ticker/price";
-        var response = await _client.GetAsync(new Uri($"{_host}{path}"));
-        if(!response.IsSuccessStatusCode)
-            throw new HttpRequestException("[BinanceRestClient]: Ошибка при полуении символов");
-        var tempResponse = await response.Content.ReadFromJsonAsync<List<InnerBinanceSymbolsResponce>>();
-        if (tempResponse == null)
-            throw new Exception($"[BinanceRestClient]: Не удалось десериализовать ответ для всех торговых пар");
-        return tempResponse
+        string url = $"{_host}/api/v3/ticker/price";
+
+        var response = await _client.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(
+                $"[BinanceRestClient] Failed to fetch symbols ({response.StatusCode})");
+
+        var tickers = await response.Content.ReadFromJsonAsync<List<InnerBinanceSymbolsResponce>>();
+        if (tickers == null)
+            throw new JsonException("[BinanceRestClient] Failed to deserialize symbols list");
+
+        return tickers
             .Select(t => t.Symbol)
-            .Where(t=>t.Contains("USDT"))
+            .Where(s => s.EndsWith("USDT", StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
-    public override async Task<WithdrawalDataResponce> GetWithdrawalDataAsync(string symbol)
+    public override Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
     {
         throw new NotImplementedException();
     }
-    private Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
+    private static Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
     {
-        return orders.ToDictionary(
-            x => decimal.Parse(x[0], CultureInfo.InvariantCulture),
-            x => decimal.Parse(x[1], CultureInfo.InvariantCulture)  
-        );
+        var dict = new Dictionary<decimal, decimal>(orders.Count);
+
+        foreach (var entry in orders)
+        {
+            if (entry.Count < 2) continue;
+
+            if (!decimal.TryParse(entry[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
+                continue;
+            if (!decimal.TryParse(entry[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var quantity))
+                continue;
+
+            dict[price] = quantity;
+        }
+
+        return dict;
+    }
+    private static string NormalizeSymbol(string symbol)
+    {
+        symbol = symbol.ToUpperInvariant();
+
+        return symbol.EndsWith("USDT")
+            ? symbol
+            : $"{symbol}USDT";
     }
 }

@@ -26,3 +26,15 @@
 /home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/bin/Debug/net8.0/Newtonsoft.Json.xml
 /home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.csproj.AssemblyReference.cache
 /home/senyacm/github/ArbiLibraryV2/CryptoRestLibrary/obj/Debug/net8.0/CryptoExchangesRestLibrary.csproj.CopyComplete
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\bin\Debug\net8.0\CryptoExchangesRestLibrary.deps.json
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\bin\Debug\net8.0\CryptoExchangesRestLibrary.dll
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\bin\Debug\net8.0\CryptoExchangesRestLibrary.pdb
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.AssemblyInfoInputs.cache
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.AssemblyInfo.cs
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.csproj.CoreCompileInputs.cache
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.sourcelink.json
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.dll
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\refint\CryptoExchangesRestLibrary.dll
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\CryptoExchangesRestLibrary.pdb
+C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\obj\Debug\net8.0\ref\CryptoExchangesRestLibrary.dll
