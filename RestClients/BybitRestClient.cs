@@ -27,6 +27,7 @@ public class BybitRestClient : ExchangeRestClient
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
+
             throw new HttpRequestException(
                 $"[BybitRestClient] Failed to fetch orderbook ({response.StatusCode}) for symbol {normalized}");
 
