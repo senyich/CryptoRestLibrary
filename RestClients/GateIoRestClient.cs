@@ -10,8 +10,8 @@ namespace CryptoExchangesRestLibrary.RestClients;
 
 public class GateIoRestClient : ExchangeRestClient
 {
-    private const string Host = "https://api.gateio.ws";
-    private const string PayloadSha512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
+    private const string _host = "https://api.gateio.ws";
+    private const string _payloadSha512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
 
     public GateIoRestClient() : base() { }
     public GateIoRestClient(HttpClient client) : base(client) { }
@@ -24,7 +24,7 @@ public class GateIoRestClient : ExchangeRestClient
     {
         string normalized = NormalizeSymbol(symbol);
 
-        string url = $"{Host}/api/v4/spot/order_book?currency_pair={normalized}&limit={limit}";
+        string url = $"{_host}/api/v4/spot/order_book?currency_pair={normalized}&limit={limit}";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -46,7 +46,7 @@ public class GateIoRestClient : ExchangeRestClient
 
     public override async Task<List<string>> GetSymbolsAsync()
     {
-        string url = $"{Host}/api/v4/spot/currency_pairs";
+        string url = $"{_host}/api/v4/spot/currency_pairs";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -76,7 +76,7 @@ public class GateIoRestClient : ExchangeRestClient
         string query = $"currency={normalizedSymbol}";
         string signature = GenerateSignature("GET", feeEndpoint, query, timestamp);
 
-        string feeUrl = $"{Host}{feeEndpoint}?{query}";
+        string feeUrl = $"{_host}{feeEndpoint}?{query}";
         var feeRequest = new HttpRequestMessage(HttpMethod.Get, feeUrl);
         feeRequest.Headers.Add("Accept", "application/json");
         feeRequest.Headers.Add("Timestamp", timestamp);
@@ -84,7 +84,7 @@ public class GateIoRestClient : ExchangeRestClient
         feeRequest.Headers.Add("SIGN", signature);
 
         string chainsEndpoint = $"/api/v4/wallet/currency_chains";
-        string chainsUrl = $"{Host}{chainsEndpoint}?currency={normalizedSymbol}";
+        string chainsUrl = $"{_host}{chainsEndpoint}?currency={normalizedSymbol}";
 
         var feeResponse = await _client.SendAsync(feeRequest);
         var chainsResponse = await _client.GetAsync(chainsUrl);
@@ -135,7 +135,7 @@ public class GateIoRestClient : ExchangeRestClient
 
     private string GenerateSignature(string method, string url, string queryString, string timestamp)
     {
-        string payload = $"{method}\n{url}\n{queryString}\n{PayloadSha512}\n{timestamp}";
+        string payload = $"{method}\n{url}\n{queryString}\n{_payloadSha512}\n{timestamp}";
         using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
         byte[] hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();

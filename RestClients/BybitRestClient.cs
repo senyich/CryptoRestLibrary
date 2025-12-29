@@ -10,7 +10,7 @@ namespace CryptoExchangesRestLibrary.RestClients;
 
 public class BybitRestClient : ExchangeRestClient
 {
-    private const string Host = "https://api.bybit.com";
+    private const string _host = "https://api.bybit.com";
 
     public BybitRestClient() : base() { }
     public BybitRestClient(HttpClient client) : base(client) { }
@@ -23,7 +23,7 @@ public class BybitRestClient : ExchangeRestClient
     {
         string normalized = NormalizeSymbol(symbol);
 
-        string url = $"{Host}/v5/market/orderbook?category=spot&symbol={normalized}&limit={limit}";
+        string url = $"{_host}/v5/market/orderbook?category=spot&symbol={normalized}&limit={limit}";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -46,7 +46,7 @@ public class BybitRestClient : ExchangeRestClient
 
     public override async Task<List<string>> GetSymbolsAsync()
     {
-        string url = $"{Host}/v5/market/tickers?category=spot";
+        string url = $"{_host}/v5/market/tickers?category=spot";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -76,7 +76,7 @@ public class BybitRestClient : ExchangeRestClient
 
         string signature = GenerateSignature(timestamp, recvWindow, queryString);
 
-        string url = $"{Host}/v5/asset/coin/query-info?{queryString}";
+        string url = $"{_host}/v5/asset/coin/query-info?{queryString}";
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("X-BAPI-SIGN", signature);

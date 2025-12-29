@@ -10,7 +10,7 @@ namespace CryptoExchangesRestLibrary.RestClients;
 
 public class MexcRestClient : ExchangeRestClient
 {
-    private const string Host = "https://api.mexc.com";
+    private const string _host = "https://api.mexc.com";
 
     public MexcRestClient() : base() { }
     public MexcRestClient(HttpClient client) : base(client) { }
@@ -23,7 +23,7 @@ public class MexcRestClient : ExchangeRestClient
     {
         string normalized = NormalizeSymbol(symbol);
 
-        string url = $"{Host}/api/v3/depth?symbol={normalized}&limit={limit}";
+        string url = $"{_host}/api/v3/depth?symbol={normalized}&limit={limit}";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -45,7 +45,7 @@ public class MexcRestClient : ExchangeRestClient
 
     public override async Task<List<string>> GetSymbolsAsync()
     {
-        string url = $"{Host}/api/v3/defaultSymbols";
+        string url = $"{_host}/api/v3/defaultSymbols";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -71,7 +71,7 @@ public class MexcRestClient : ExchangeRestClient
         string queryString = $"coin={normalizedSymbol}&timestamp={timestamp}";
         string signature = GenerateSignature(queryString);
 
-        string url = $"{Host}/api/v3/capital/config/getall?{queryString}&signature={signature}";
+        string url = $"{_host}/api/v3/capital/config/getall?{queryString}&signature={signature}";
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("X-MEXC-APIKEY", _apiCredentials.ApiKey);

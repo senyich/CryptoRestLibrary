@@ -10,7 +10,7 @@ namespace CryptoExchangesRestLibrary.RestClients;
 
 public class KucoinRestClient : ExchangeRestClient
 {
-    private const string Host = "https://api.kucoin.com";
+    private const string _host = "https://api.kucoin.com";
     private string _passPhrase = null;
 
     public KucoinRestClient() : base() { }
@@ -27,7 +27,7 @@ public class KucoinRestClient : ExchangeRestClient
         limit = 20;
         string normalized = NormalizeSymbol(symbol);
 
-        string url = $"{Host}/api/v1/market/orderbook/level2_{limit}?symbol={normalized}";
+        string url = $"{_host}/api/v1/market/orderbook/level2_{limit}?symbol={normalized}";
         var response = await _client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
@@ -63,7 +63,7 @@ public class KucoinRestClient : ExchangeRestClient
         string normalizedSymbol = NormalizeSymbolForWithdrawal(symbol);
 
         string path = $"/api/v1/withdrawals/quotas?currency={normalizedSymbol}";
-        string url = $"{Host}{path}";
+        string url = $"{_host}{path}";
 
         long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         string method = "GET";

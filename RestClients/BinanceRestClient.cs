@@ -9,7 +9,6 @@ namespace CryptoExchangesRestLibrary.RestClients;
 public class BinanceRestClient : ExchangeRestClient
 {
     private const string _host = "https://api.binance.com";
-
     public BinanceRestClient() : base() { }
     public BinanceRestClient(HttpClient client) : base(client) { }
     public BinanceRestClient(int timeoutSeconds) : base(timeoutSeconds) { }
