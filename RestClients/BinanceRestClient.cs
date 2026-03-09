@@ -1,55 +1,64 @@
-using System.Globalization;
-using System.Net.Http.Json;
-using System.Text.Json;
+using CryptoExchangesRestLibrary.Exceptions;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
 using CryptoExchangesRestLibrary.SerializationClasses;
+using System.Globalization;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CryptoExchangesRestLibrary.RestClients;
 
+/// <summary>
+/// REST client for Binance exchange.
+/// </summary>
 public class BinanceRestClient : ExchangeRestClient
 {
-    private const string _host = "https://api.binance.com";
+    private const string Host = "https://api.binance.com";
+    private const string BaseWebsiteUrl = "https://www.binance.com/ru/trade/";
+
     public BinanceRestClient() : base() { }
     public BinanceRestClient(HttpClient client) : base(client) { }
     public BinanceRestClient(int timeoutSeconds) : base(timeoutSeconds) { }
 
-    public override string GetUrl(string symbol) =>
-        $"https://www.binance.com/ru/trade/{symbol.Replace("USDT", "_USDT")}";
+    protected override string GetExchangeName() => "Binance";
 
-    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    public override string GetUrl(string symbol)
     {
-        string normalized = NormalizeSymbol(symbol);
+        var formattedSymbol = symbol.ToUpperInvariant().Replace("USDT", "_USDT");
+        return $"{BaseWebsiteUrl}{formattedSymbol}";
+    }
 
-        string url = $"{_host}/api/v3/depth?symbol={normalized}&limit={limit}";
-        var response = await _client.GetAsync(url);
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10, CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeSymbol(symbol);
+        var url = $"{Host}/api/v3/depth?symbol={normalized}&limit={limit}";
 
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"[BinanceRestClient] Failed to fetch orderbook ({response.StatusCode}) for symbol {normalized}");
+        var response = await SendWithRetryAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch orderbook", normalized);
 
-        var raw = await response.Content.ReadFromJsonAsync<InnerBinanceOrderbookResponse>();
+        var raw = await ReadFromJsonAsync<BinanceOrderbookResponse>(response, cancellationToken);
         if (raw == null)
-            throw new JsonException(
-                $"[BinanceRestClient] Failed to deserialize orderbook for {normalized}");
+            throw new DataParsingException(GetExchangeName(), "Received null orderbook response", typeof(BinanceOrderbookResponse));
 
         return new OrderbookResponse(
             Symbol: normalized,
-            Asks: ConvertToDictionary(raw.Asks),
-            Bids: ConvertToDictionary(raw.Bids)
+            Asks: ConvertToOrderbookDictionary(raw.Asks),
+            Bids: ConvertToOrderbookDictionary(raw.Bids)
         );
     }
-    public override async Task<List<string>> GetSymbolsAsync()
+
+    public override async Task<List<string>> GetSymbolsAsync(CancellationToken cancellationToken = default)
     {
-        string url = $"{_host}/api/v3/ticker/price";
+        var url = $"{Host}/api/v3/ticker/price";
 
-        var response = await _client.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"[BinanceRestClient] Failed to fetch symbols ({response.StatusCode})");
+        var response = await SendWithRetryAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch symbols");
 
-        var tickers = await response.Content.ReadFromJsonAsync<List<InnerBinanceSymbolsResponce>>();
+        var tickers = await ReadFromJsonAsync<List<BinanceTickerResponse>>(response, cancellationToken);
         if (tickers == null)
-            throw new JsonException("[BinanceRestClient] Failed to deserialize symbols list");
+            throw new DataParsingException(GetExchangeName(), "Received null symbols list", typeof(List<BinanceTickerResponse>));
 
         return tickers
             .Select(t => t.Symbol)
@@ -57,34 +66,33 @@ public class BinanceRestClient : ExchangeRestClient
             .ToList();
     }
 
-    public override Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var normalized = NormalizeSymbol(symbol);
+        var url = $"{Host}/sapi/v1/capital/config/getall";
+        long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        string queryString = $"timestamp={timestamp}";
+        if (_apiCredentials == null)
+            throw new AuthenticationException(GetExchangeName(), "API credentials required for withdrawal data");
+        string signature = GetSignature(queryString, _apiCredentials.ApiSecret);
+        string fullQuery = $"{queryString}&signature={signature}";
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{url}?{fullQuery}");
+        request.Headers.Add("X-MBX-APIKEY", _apiCredentials.ApiKey);
+        var response = await SendWithRetryAsync(request, cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch orderbook", normalized);
+        Console.WriteLine(response.Content.ReadAsStringAsync());
+        throw new NotImplementedException("binance not implemetned");
     }
-    private static Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
+    private string GetSignature(string queryString, string secret)
     {
-        var dict = new Dictionary<decimal, decimal>(orders.Count);
-
-        foreach (var entry in orders)
-        {
-            if (entry.Count < 2) continue;
-
-            if (!decimal.TryParse(entry[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
-                continue;
-            if (!decimal.TryParse(entry[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var quantity))
-                continue;
-
-            dict[price] = quantity;
-        }
-
-        return dict;
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(queryString));
+        return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
+
     private static string NormalizeSymbol(string symbol)
     {
         symbol = symbol.ToUpperInvariant();
-
-        return symbol.EndsWith("USDT")
-            ? symbol
-            : $"{symbol}USDT";
+        return symbol.EndsWith("USDT") ? symbol : $"{symbol}USDT";
     }
 }

@@ -4,12 +4,28 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        
+        <!-- Library metadata -->
+        <Version>1.0.0</Version>
+        <Authors>CryptoRestLibrary Contributors</Authors>
+        <Description>REST client library for cryptocurrency exchanges (Binance, Bybit, BingX, Gate.io, KuCoin, MEXC)</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/yourusername/CryptoRestLibrary</RepositoryUrl>
+        <PackageTags>crypto;exchange;binance;bybit;bingx;gateio;kucoin;mexc;rest;api</PackageTags>
+        
+        <!-- Build settings -->
+        <LangVersion>12.0</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
-      <Reference Include="Newtonsoft.Json">
-        <HintPath>..\..\..\.nuget\packages\newtonsoft.json\13.0.1\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
-      </Reference>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+        <PackageReference Include="Polly" Version="8.3.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

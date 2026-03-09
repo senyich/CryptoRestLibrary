@@ -8,6 +8,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = CryptoExchangesRestLibrary
-build_property.ProjectDir = C:\Users\Administrator\Documents\GitReposes\ArrbitrageLibraryV2\CryptoRestLibrary\
+build_property.ProjectDir = C:\Users\Administrator\Documents\GitReposes\CryptoRestLibrary\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 

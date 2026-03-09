@@ -2,37 +2,43 @@ using System.Text.Json.Serialization;
 
 namespace CryptoExchangesRestLibrary.SerializationClasses.Kucoin;
 
-public record class KucoinOrderbookData(
-    long Time,
-    string Sequence,
-    List<List<string>> Bids,
-    List<List<string>> Asks
+/// <summary>
+/// KuCoin orderbook response.
+/// </summary>
+public record class KucoinOrderbookResponse(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("msg")] string? Message,
+    [property: JsonPropertyName("data")] KucoinOrderbookData? Data
 );
 
-public record class KucoinOrderbookResponse(
-    string Code,
-    KucoinOrderbookData Data
+/// <summary>
+/// KuCoin orderbook data.
+/// </summary>
+public record class KucoinOrderbookData(
+    [property: JsonPropertyName("time")] long Time,
+    [property: JsonPropertyName("sequence")] string Sequence,
+    [property: JsonPropertyName("bids")] List<List<string>> Bids,
+    [property: JsonPropertyName("asks")] List<List<string>> Asks
 );
-public record class KucoinWithdrawalLimitData(
-    string Currency,
-    [property: JsonPropertyName("limitBTCAmount")] string LimitBTCAmount,
-    [property: JsonPropertyName("usedBTCAmount")] string UsedBTCAmount,
-    string QuotaCurrency,
-    [property: JsonPropertyName("limitQuotaCurrencyAmount")] string LimitQuotaCurrencyAmount,
-    [property: JsonPropertyName("usedQuotaCurrencyAmount")] string UsedQuotaCurrencyAmount,
-    [property: JsonPropertyName("remainAmount")] string RemainAmount,
-    [property: JsonPropertyName("availableAmount")] string AvailableAmount,
+
+/// <summary>
+/// KuCoin withdrawal quotas response.
+/// </summary>
+public record class KucoinWithdrawalResponse(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("msg")] string? Message,
+    [property: JsonPropertyName("data")] KucoinWithdrawalData? Data
+);
+
+/// <summary>
+/// KuCoin withdrawal data.
+/// </summary>
+public record class KucoinWithdrawalData(
+    [property: JsonPropertyName("currency")] string Currency,
+    [property: JsonPropertyName("chain")] string Chain,
     [property: JsonPropertyName("withdrawMinFee")] string WithdrawMinFee,
-    [property: JsonPropertyName("innerWithdrawMinFee")] string InnerWithdrawMinFee,
     [property: JsonPropertyName("withdrawMinSize")] string WithdrawMinSize,
     [property: JsonPropertyName("isWithdrawEnabled")] bool IsWithdrawEnabled,
-    int Precision,
-    string Chain,
-    string? Reason,
-    [property: JsonPropertyName("lockedAmount")] string LockedAmount
-);
-
-public record class KucoinWithdrawalLimitResponse(
-    string Code,
-    KucoinWithdrawalLimitData Data
+    [property: JsonPropertyName("precision")] int Precision,
+    [property: JsonPropertyName("reason")] string? Reason
 );

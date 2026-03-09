@@ -1,75 +1,80 @@
 using System.Globalization;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
+using CryptoExchangesRestLibrary.Exceptions;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
 using CryptoExchangesRestLibrary.SerializationClasses.Kucoin;
 
 namespace CryptoExchangesRestLibrary.RestClients;
 
+/// <summary>
+/// REST client for KuCoin exchange.
+/// Note: KuCoin requires an additional passphrase parameter.
+/// </summary>
 public class KucoinRestClient : ExchangeRestClient
 {
-    private const string _host = "https://api.kucoin.com";
-    private string _passPhrase = null;
+    private const string Host = "https://api.kucoin.com";
+    private const string BaseWebsiteUrl = "https://www.kucoin.com/trade/";
+    private string? _passPhrase;
 
     public KucoinRestClient() : base() { }
     public KucoinRestClient(HttpClient client) : base(client) { }
     public KucoinRestClient(int timeoutSeconds) : base(timeoutSeconds) { }
 
+    protected override string GetExchangeName() => "Kucoin";
+
+    /// <summary>
+    /// Sets the passphrase (required for KuCoin API).
+    /// Must be called after SetApiCredentials.
+    /// </summary>
     public void SetPassPhrase(string passPhrase) => _passPhrase = passPhrase;
 
     public override string GetUrl(string symbol) =>
-        $"https://www.kucoin.com/trade/{symbol.Replace("USDT", "-USDT")}";
+        $"{BaseWebsiteUrl}{symbol.ToUpperInvariant().Replace("USDT", "-USDT")}";
 
-    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10, CancellationToken cancellationToken = default)
     {
+        // KuCoin only supports fixed depth levels
         limit = 20;
-        string normalized = NormalizeSymbol(symbol);
+        var normalized = NormalizeSymbol(symbol);
+        var url = $"{Host}/api/v1/market/orderbook/level2_{limit}?symbol={normalized}";
 
-        string url = $"{_host}/api/v1/market/orderbook/level2_{limit}?symbol={normalized}";
-        var response = await _client.GetAsync(url);
+        var response = await SendWithRetryAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch orderbook", normalized);
 
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"[KucoinRestClient] Failed to fetch orderbook ({response.StatusCode}) for symbol {normalized}");
-
-        var apiResponse = await response.Content.ReadFromJsonAsync<KucoinOrderbookResponse>();
-
+        var apiResponse = await ReadFromJsonAsync<KucoinOrderbookResponse>(response, cancellationToken);
         if (apiResponse?.Data == null)
-            throw new JsonException(
-                $"[KucoinRestClient] Failed to deserialize orderbook for {normalized}");
+            throw new DataParsingException(GetExchangeName(), "Received null orderbook response", typeof(KucoinOrderbookResponse));
 
         return new OrderbookResponse(
             Symbol: normalized,
-            Asks: ConvertToDictionary(apiResponse.Data.Asks),
-            Bids: ConvertToDictionary(apiResponse.Data.Bids)
+            Asks: ConvertToOrderbookDictionary(apiResponse.Data.Asks),
+            Bids: ConvertToOrderbookDictionary(apiResponse.Data.Bids)
         );
     }
 
-    public override async Task<List<string>> GetSymbolsAsync()
+    public override Task<List<string>> GetSymbolsAsync(CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        throw new NotImplementedException("GetSymbolsAsync not yet implemented for KuCoin");
     }
 
-    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol, CancellationToken cancellationToken = default)
     {
         if (_apiCredentials == null)
-            throw new InvalidOperationException("[KucoinRestClient] API credentials required for withdrawal data");
+            throw new AuthenticationException(GetExchangeName(), "API credentials required for withdrawal data");
 
         if (string.IsNullOrEmpty(_passPhrase))
-            throw new InvalidOperationException("[KucoinRestClient] Passphrase required for withdrawal data");
+            throw new AuthenticationException(GetExchangeName(), "Passphrase required for KuCoin withdrawal data. Call SetPassPhrase() first.");
 
-        string normalizedSymbol = NormalizeSymbolForWithdrawal(symbol);
+        var normalizedSymbol = NormalizeSymbolForWithdrawal(symbol);
+        var path = $"/api/v1/withdrawals/quotas?currency={normalizedSymbol}";
+        var url = $"{Host}{path}";
 
-        string path = $"/api/v1/withdrawals/quotas?currency={normalizedSymbol}";
-        string url = $"{_host}{path}";
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        const string method = "GET";
 
-        long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        string method = "GET";
-
-        string signature = GenerateSignature(timestamp, method, path);
-        string signedPassphrase = GeneratePassphraseSignature();
+        var signature = GenerateSignature(timestamp, method, path);
+        var signedPassphrase = GeneratePassphraseSignature();
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("KC-API-KEY", _apiCredentials.ApiKey);
@@ -78,33 +83,26 @@ public class KucoinRestClient : ExchangeRestClient
         request.Headers.Add("KC-API-PASSPHRASE", signedPassphrase);
         request.Headers.Add("KC-API-KEY-VERSION", "2");
 
-        var response = await _client.SendAsync(request);
+        var response = await SendWithRetryAsync(request, cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch withdrawal data", symbol);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException(
-                $"[KucoinRestClient] Failed to fetch withdrawal data ({response.StatusCode}) for symbol {symbol}: {errorContent}");
-        }
-
-        var apiResponse = await response.Content.ReadFromJsonAsync<KucoinWithdrawalLimitResponse>();
-
+        var apiResponse = await ReadFromJsonAsync<KucoinWithdrawalResponse>(response, cancellationToken);
         if (apiResponse?.Data == null)
-            throw new JsonException(
-                $"[KucoinRestClient] Failed to deserialize withdrawal data for symbol {symbol}");
+            throw new DataParsingException(GetExchangeName(), "Failed to deserialize withdrawal data", typeof(KucoinWithdrawalResponse));
 
+        var data = apiResponse.Data;
         return new WithdrawalDataResponse(
-            Symbol: apiResponse.Data.Currency,
-            Chains: new List<BlockchainDataResponse>
-            {
+            Symbol: data.Currency,
+            Chains:
+            [
                 new BlockchainDataResponse(
-                    Name: apiResponse.Data.Chain,
-                    FullName: apiResponse.Data.Chain,
-                    CanWithdraw: apiResponse.Data.IsWithdrawEnabled,
-                    CanDeposit: true, // Assuming deposit is always enabled as in original
-                    Fee: decimal.Parse(apiResponse.Data.WithdrawMinFee, CultureInfo.InvariantCulture)
+                    Name: data.Chain,
+                    FullName: data.Chain,
+                    CanWithdraw: data.IsWithdrawEnabled,
+                    CanDeposit: true, // KuCoin doesn't provide deposit status in this endpoint
+                    Fee: ParseDecimalInvariant(data.WithdrawMinFee)
                 )
-            }
+            ]
         );
     }
 
@@ -114,44 +112,21 @@ public class KucoinRestClient : ExchangeRestClient
         return symbol.Contains("USDT") ? symbol.Replace("USDT", "-USDT") : $"{symbol}-USDT";
     }
 
-    private static string NormalizeSymbolForWithdrawal(string symbol)
-    {
-        symbol = symbol.ToUpperInvariant();
-        return symbol.Replace("USDT", "").Replace("-", "");
-    }
+    private static string NormalizeSymbolForWithdrawal(string symbol) =>
+        symbol.ToUpperInvariant().Replace("USDT", "").Replace("-", "");
 
     private string GenerateSignature(long timestamp, string method, string path)
     {
-        string strToSign = $"{timestamp}{method}{path}";
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
-        byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(strToSign));
+        var strToSign = $"{timestamp}{method}{path}";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials!.ApiSecret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(strToSign));
         return Convert.ToBase64String(hash);
     }
 
     private string GeneratePassphraseSignature()
     {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
-        byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(_passPhrase));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials!.ApiSecret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(_passPhrase!));
         return Convert.ToBase64String(hash);
     }
-
-    private static Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
-    {
-        var dict = new Dictionary<decimal, decimal>(orders.Count);
-
-        foreach (var entry in orders)
-        {
-            if (entry.Count < 2) continue;
-
-            if (!decimal.TryParse(entry[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
-                continue;
-            if (!decimal.TryParse(entry[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var quantity))
-                continue;
-
-            dict[price] = quantity;
-        }
-
-        return dict;
-    }
 }
-

@@ -1,62 +1,64 @@
 using System.Globalization;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
+using CryptoExchangesRestLibrary.Exceptions;
 using CryptoExchangesRestLibrary.RestClients.Abstraction;
 using CryptoExchangesRestLibrary.SerializationClasses.Bybit;
 
 namespace CryptoExchangesRestLibrary.RestClients;
 
+/// <summary>
+/// REST client for Bybit exchange.
+/// </summary>
 public class BybitRestClient : ExchangeRestClient
 {
-    private const string _host = "https://api.bybit.com";
+    private const string Host = "https://api.bybit.com";
+    private const string BaseWebsiteUrl = "https://www.bybit.com/en/trade/spot/";
 
     public BybitRestClient() : base() { }
     public BybitRestClient(HttpClient client) : base(client) { }
     public BybitRestClient(int timeoutSeconds) : base(timeoutSeconds) { }
 
+    protected override string GetExchangeName() => "Bybit";
+
     public override string GetUrl(string symbol) =>
-        $"https://www.bybit.com/en/trade/spot/{symbol.Replace("USDT", "/USDT")}";
+        $"{BaseWebsiteUrl}{symbol.ToUpperInvariant().Replace("USDT", "/USDT")}";
 
-    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10)
+    public override async Task<OrderbookResponse> GetOrderbookAsync(string symbol, int limit = 10, CancellationToken cancellationToken = default)
     {
-        string normalized = NormalizeSymbol(symbol);
+        var normalized = NormalizeSymbol(symbol);
+        var url = $"{Host}/v5/market/orderbook?category=spot&symbol={normalized}&limit={limit}";
 
-        string url = $"{_host}/v5/market/orderbook?category=spot&symbol={normalized}&limit={limit}";
-        var response = await _client.GetAsync(url);
+        var response = await SendWithRetryAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch orderbook", normalized);
 
-        if (!response.IsSuccessStatusCode)
-
-            throw new HttpRequestException(
-                $"[BybitRestClient] Failed to fetch orderbook ({response.StatusCode}) for symbol {normalized}");
-
-        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<BybitOrderbookInnerResult>>();
-
-        if (apiResponse?.Result == null)
-            throw new JsonException(
-                $"[BybitRestClient] Failed to deserialize orderbook for {normalized}");
+        var apiResponse = await ReadFromJsonAsync<BybitApiResponse<BybitOrderbookResult>>(response, cancellationToken);
+        if (apiResponse?.Result == null || apiResponse.RetCode != 0)
+            throw new DataParsingException(
+                GetExchangeName(),
+                $"Failed to deserialize orderbook (retCode: {apiResponse?.RetCode}, retMsg: {apiResponse?.RetMsg})",
+                typeof(BybitOrderbookResult));
 
         return new OrderbookResponse(
             Symbol: normalized,
-            Asks: ConvertToDictionary(apiResponse.Result.A),
-            Bids: ConvertToDictionary(apiResponse.Result.B)
+            Asks: ConvertToOrderbookDictionary(apiResponse.Result.Asks),
+            Bids: ConvertToOrderbookDictionary(apiResponse.Result.Bids)
         );
     }
 
-    public override async Task<List<string>> GetSymbolsAsync()
+    public override async Task<List<string>> GetSymbolsAsync(CancellationToken cancellationToken = default)
     {
-        string url = $"{_host}/v5/market/tickers?category=spot";
-        var response = await _client.GetAsync(url);
+        var url = $"{Host}/v5/market/tickers?category=spot";
 
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"[BybitRestClient] Failed to fetch symbols ({response.StatusCode})");
+        var response = await SendWithRetryAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch symbols");
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<BybitTickersResult>>();
-
-        if (apiResponse?.Result?.List == null)
-            throw new JsonException("[BybitRestClient] Failed to deserialize symbols list");
+        var apiResponse = await ReadFromJsonAsync<BybitApiResponse<BybitTickersResult>>(response, cancellationToken);
+        if (apiResponse?.Result?.List == null || apiResponse.RetCode != 0)
+            throw new DataParsingException(
+                GetExchangeName(),
+                $"Failed to deserialize symbols (retCode: {apiResponse?.RetCode}, retMsg: {apiResponse?.RetMsg})",
+                typeof(BybitTickersResult));
 
         return apiResponse.Result.List
             .Where(x => x.Symbol.Contains("USDT"))
@@ -64,19 +66,19 @@ public class BybitRestClient : ExchangeRestClient
             .ToList();
     }
 
-    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol)
+    public override async Task<WithdrawalDataResponse> GetWithdrawalDataAsync(string symbol, CancellationToken cancellationToken = default)
     {
         if (_apiCredentials == null)
-            throw new InvalidOperationException("[BybitRestClient] API credentials required for withdrawal data");
+            throw new AuthenticationException(GetExchangeName(), "API credentials required for withdrawal data");
 
-        string normalizedSymbol = NormalizeSymbolForWithdrawal(symbol);
-        long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        string recvWindow = "5000";
-        string queryString = $"coin={normalizedSymbol}";
+        var normalizedSymbol = NormalizeSymbolForWithdrawal(symbol);
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        const string recvWindow = "5000";
+        var queryString = $"coin={normalizedSymbol}";
 
-        string signature = GenerateSignature(timestamp, recvWindow, queryString);
+        var signature = GenerateSignature(timestamp, recvWindow, queryString);
 
-        string url = $"{_host}/v5/asset/coin/query-info?{queryString}";
+        var url = $"{Host}/v5/asset/coin/query-info?{queryString}";
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("X-BAPI-SIGN", signature);
@@ -84,29 +86,24 @@ public class BybitRestClient : ExchangeRestClient
         request.Headers.Add("X-BAPI-TIMESTAMP", timestamp.ToString());
         request.Headers.Add("X-BAPI-RECV-WINDOW", recvWindow);
 
-        var response = await _client.SendAsync(request);
+        var response = await SendWithRetryAsync(request, cancellationToken);
+        EnsureSuccessStatusCode(response, "fetch withdrawal data", symbol);
 
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"[BybitRestClient] Failed to fetch withdrawal data ({response.StatusCode}) for symbol {symbol}");
-
-        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<CoinInfoResult>>();
-
+        var apiResponse = await ReadFromJsonAsync<BybitApiResponse<BybitCoinInfoResult>>(response, cancellationToken);
         if (apiResponse?.Result?.Rows == null || apiResponse.RetCode != 0 || apiResponse.Result.Rows.Count == 0)
-            throw new JsonException(
-                $"[BybitRestClient] No withdrawal data found for symbol {symbol}");
+            throw new DataParsingException(GetExchangeName(), "No withdrawal data found", typeof(BybitCoinInfoResult));
 
         var coinData = apiResponse.Result.Rows[0];
 
         return new WithdrawalDataResponse(
             Symbol: coinData.Coin,
-            Chains: coinData.Chains.Select(chain => new BlockchainDataResponse(
+            Chains: coinData.Chains?.Select(chain => new BlockchainDataResponse(
                 Name: chain.Chain,
                 FullName: chain.ChainType,
                 CanWithdraw: chain.ChainWithdraw == "1",
                 CanDeposit: chain.ChainDeposit == "1",
-                Fee: decimal.Parse(chain.WithdrawFee, CultureInfo.InvariantCulture)
-            )).ToList()
+                Fee: ParseDecimalInvariant(chain.WithdrawFee)
+            )).ToList() ?? []
         );
     }
 
@@ -124,28 +121,9 @@ public class BybitRestClient : ExchangeRestClient
 
     private string GenerateSignature(long timestamp, string recvWindow, string queryString)
     {
-        string payload = $"{timestamp}{_apiCredentials.ApiKey}{recvWindow}{queryString}";
+        var payload = $"{timestamp}{_apiCredentials!.ApiKey}{recvWindow}{queryString}";
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_apiCredentials.ApiSecret));
-        byte[] hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+        var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-    }
-
-    private static Dictionary<decimal, decimal> ConvertToDictionary(List<List<string>> orders)
-    {
-        var dict = new Dictionary<decimal, decimal>(orders.Count);
-
-        foreach (var entry in orders)
-        {
-            if (entry.Count < 2) continue;
-
-            if (!decimal.TryParse(entry[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
-                continue;
-            if (!decimal.TryParse(entry[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var quantity))
-                continue;
-
-            dict[price] = quantity;
-        }
-
-        return dict;
     }
 }
